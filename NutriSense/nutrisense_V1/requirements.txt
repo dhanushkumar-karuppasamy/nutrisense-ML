@@ -1,0 +1,9 @@
+pandas
+numpy
+pyreadstat
+matplotlib
+seaborn
+jupyter
+openpyxl
+scikit-learn
+imbalanced-learn

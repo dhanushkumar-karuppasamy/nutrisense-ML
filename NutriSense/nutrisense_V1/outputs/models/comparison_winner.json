@@ -1,0 +1,5 @@
+{
+  "winner_model_name": "Stacking (RF+GBM)",
+  "winner_auc": 0.5997,
+  "winner_recall": 0.115
+}

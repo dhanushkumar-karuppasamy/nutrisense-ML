@@ -1,0 +1,42 @@
+# Virtual environment
+venv/
+.venv/
+env/
+ENV/
+
+# Python cache & bytecode
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# Data (Ignore huge raw datasets)
+data/raw/*
+!data/raw/.gitkeep
+
+# System / OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+# Environments
+myenv/
+venv/
+.env
+
+# Model binaries (large, regeneratable)
+outputs/models/*.pkl
+
+# Data files (DHS redistribution prohibited)
+data/raw/
+data/processed/*.csv
+
+# Jupyter checkpoints
+.ipynb_checkpoints/
+
+# IDE
+.vscode/
+__pycache__/
+*.pyc

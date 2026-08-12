@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NutriSense - Explainable AI Stunting Risk & Counterfactual Simulator</title>
+
+  <!-- Google Fonts & FontAwesome -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <!-- Custom CSS -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+</head>
+<body class="light-theme">
+
+  <!-- Top Navigation Header -->
+  <header class="navbar">
+    <div class="nav-container">
+      <div class="brand">
+        <div class="logo-icon">
+          <i class="fa-solid fa-heart-pulse"></i>
+        </div>
+        <div class="brand-text">
+          <span class="brand-title">NutriSense</span>
+          <span class="brand-subtitle">Explainable AI Framework for Childhood Stunting Prevention</span>
+        </div>
+      </div>
+
+      <div class="nav-actions">
+        <div class="sample-loader">
+          <label><i class="fa-solid fa-folder-open"></i> Preset Profile:</label>
+          <select id="presetSelect" onchange="loadPresetProfile(this.value)">
+            <option value="">-- Select Sample Child --</option>
+            <option value="high_risk_rural">Anitha (High Risk Rural)</option>
+            <option value="moderate_risk_semiurban">Karthik (Moderate Risk)</option>
+            <option value="low_risk_urban">Priya (Low Risk Urban)</option>
+          </select>
+        </div>
+
+        <button class="mode-toggle-btn" onclick="toggleFieldMode()">
+          <i class="fa-solid fa-mobile-screen-button"></i>
+          <span id="modeBtnText">ASHA Field Mode</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="app-container">
+
+    <!-- Navigation Tabs Bar -->
+    <nav class="tab-bar">
+      <button class="tab-btn active" onclick="switchTab('screeningTab')">
+        <i class="fa-solid fa-calculator"></i> Risk Screening
+      </button>
+      <button class="tab-btn" onclick="switchTab('explainabilityTab')">
+        <i class="fa-solid fa-chart-waterfall"></i> SHAP Explainability
+      </button>
+      <button class="tab-btn" onclick="switchTab('counterfactualTab')">
+        <i class="fa-solid fa-wand-magic-sparkles"></i> "What-If" Simulator
+      </button>
+      <button class="tab-btn" onclick="switchTab('benchmarkTab')">
+        <i class="fa-solid fa-shield-halved"></i> Model Trust & Benchmarks
+      </button>
+      <button class="tab-btn field-tab" onclick="switchTab('fieldTab')">
+        <i class="fa-solid fa-user-nurse"></i> ASHA Quick-Check
+      </button>
+    </nav>
+
+    <!-- TAB 1: RISK SCREENING CALCULATOR -->
+    <section id="screeningTab" class="tab-content active">
+      <div class="grid-layout">
+        
+        <!-- Form Panel -->
+        <div class="card form-card">
+          <div class="card-header">
+            <h3><i class="fa-solid fa-clipboard-user"></i> Child & Household Screening Form</h3>
+            <span class="badge badge-info">NFHS-5 Indicator Set</span>
+          </div>
+
+          <form id="riskForm" onsubmit="event.preventDefault(); runPrediction();">
+            
+            <!-- Section 1: Demographics -->
+            <div class="form-section">
+              <h4 class="section-title"><i class="fa-solid fa-child"></i> Child Demographics</h4>
+              <div class="form-grid">
+                <div class="form-group">
+                  <label for="child_age_months">Child Age (Months)</label>
+                  <input type="number" id="child_age_months" name="child_age_months" min="0" max="59" value="24" required>
+                </div>
+                
+                <div class="form-group">
+                  <label for="child_sex">Child Sex</label>
+                  <select id="child_sex" name="child_sex">
+                    <option value="0">Male</option>
+                    <option value="1">Female</option>
+                  </select>
+                </div>
+
+                <div class="form-group">
+                  <label for="birth_order">Birth Order</label>
+                  <input type="number" id="birth_order" name="birth_order" min="1" max="10" value="2">
+                </div>
+
+                <div class="form-group">
+                  <label for="birth_interval">Preceding Birth Interval (Months)</label>
+                  <input type="number" id="birth_interval" name="birth_interval" min="9" max="120" value="30">
+                </div>
+              </div>
+            </div>
+
+            <!-- Section 2: Maternal & Health Care -->
+            <div class="form-section">
+              <h4 class="section-title"><i class="fa-solid fa-user-nurse"></i> Maternal Health & Clinical Factors</h4>
+              <div class="form-grid">
+                <div class="form-group">
+                  <label for="mother_age">Mother's Age (Years)</label>
+                  <input type="number" id="mother_age" name="mother_age" min="15" max="49" value="24">
+                </div>
+
+                <div class="form-group">
+                  <label for="mother_education">Mother's Education</label>
+                  <select id="mother_education" name="mother_education">
+                    <option value="0">No Formal Education</option>
+                    <option value="1">Primary School</option>
+                    <option value="2" selected>Secondary School</option>
+                    <option value="3">Higher Education</option>
+                  </select>
+                </div>
+
+                <div class="form-group">
+                  <label for="anc_visits">Antenatal Care (ANC) Visits</label>
+                  <input type="number" id="anc_visits" name="anc_visits" min="0" max="20" value="2">
+                </div>
+
+                <div class="form-group">
+                  <label for="mother_anemia">Mother Anemia Level</label>
+                  <select id="mother_anemia" name="mother_anemia">
+                    <option value="0">Not Anemic</option>
+                    <option value="1" selected>Mild Anemia</option>
+                    <option value="2">Moderate Anemia</option>
+                    <option value="3">Severe Anemia</option>
+                  </select>
+                </div>
+
+                <div class="form-group">
+                  <label for="diarrhea_recent">Recent Diarrhea (Past 2 Wks)</label>
+                  <select id="diarrhea_recent" name="diarrhea_recent">
+                    <option value="0">No</option>
+                    <option value="1">Yes (Infection Active)</option>
+                  </select>
+                </div>
+
+                <div class="form-group">
+                  <label for="fever_recent">Recent Fever (Past 2 Wks)</label>
+                  <select id="fever_recent" name="fever_recent">
+                    <option value="0">No</option>
+                    <option value="1">Yes</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <!-- Section 3: WASH & Household Wealth -->
+            <div class="form-section">
+              <h4 class="section-title"><i class="fa-solid fa-house-chimney-window"></i> WASH & Household Wealth</h4>
+              <div class="form-grid">
+                <div class="form-group">
+                  <label for="wealth_index">Household Wealth Quintile</label>
+                  <select id="wealth_index" name="wealth_index">
+                    <option value="1">1 - Poorest</option>
+                    <option value="2" selected>2 - Poorer</option>
+                    <option value="3">3 - Middle</option>
+                    <option value="4">4 - Richer</option>
+                    <option value="5">5 - Richest</option>
+                  </select>
+                </div>
+
+                <div class="form-group">
+                  <label for="toilet_type">Sanitation Facility Type</label>
+                  <select id="toilet_type" name="toilet_type">
+                    <option value="toilet_type_11">Flush Toilet (Piped Sewer)</option>
+                    <option value="toilet_type_12">Flush Toilet (Septic Tank)</option>
+                    <option value="toilet_type_22">Pit Latrine with Slab</option>
+                    <option value="toilet_type_31" selected>No Facility (Open Defecation)</option>
+                  </select>
+                </div>
+
+                <div class="form-group">
+                  <label for="water_source">Drinking Water Source</label>
+                  <select id="water_source" name="water_source">
+                    <option value="water_source_11">Piped Water into Dwelling</option>
+                    <option value="water_source_13">Public Tap / Standpipe</option>
+                    <option value="water_source_14">Tube Well / Borehole</option>
+                    <option value="water_source_31" selected>Unprotected Well / Surface Water</option>
+                  </select>
+                </div>
+
+                <div class="form-group">
+                  <label for="share_toilet">Shared Sanitation?</label>
+                  <select id="share_toilet" name="share_toilet">
+                    <option value="0">Private Sanitation</option>
+                    <option value="1" selected>Shared Latrine</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <div class="form-actions">
+              <button type="submit" class="btn btn-primary btn-block">
+                <i class="fa-solid fa-microchip"></i> Calculate Risk & Generate Explanations
+              </button>
+            </div>
+          </form>
+        </div>
+
+        <!-- Result Gauge Card -->
+        <div class="card result-card">
+          <div class="card-header">
+            <h3><i class="fa-solid fa-gauge-high"></i> Stunting Risk Assessment</h3>
+            <span id="riskBadge" class="badge badge-warning">Awaiting Input</span>
+          </div>
+
+          <div class="gauge-container">
+            <div class="gauge-meter">
+              <svg class="gauge-svg" viewBox="0 0 100 50">
+                <path class="gauge-bg" d="M 10 50 A 40 40 0 0 1 90 50" fill="none" stroke-width="8" />
+                <path id="gaugeFill" class="gauge-fill" d="M 10 50 A 40 40 0 0 1 90 50" fill="none" stroke-width="8" stroke-dasharray="125.6" stroke-dashoffset="125.6" />
+              </svg>
+              <div class="gauge-center">
+                <span id="riskScoreVal" class="gauge-score">0.0%</span>
+                <span id="riskScoreLabel" class="gauge-sub">Stunting Probability</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="summary-box">
+            <h4 id="riskTierTitle">Predicted Risk Category</h4>
+            <p id="riskActionSummary">Fill out the child details form or select a sample child profile to compute stunting probability.</p>
+          </div>
+
+          <!-- Top Drivers Quick List -->
+          <div class="quick-drivers">
+            <h4><i class="fa-solid fa-list-check"></i> Primary Vulnerability Drivers</h4>
+            <ul id="quickDriversList" class="drivers-list">
+              <li class="empty-msg">No active risk factors computed yet.</li>
+            </ul>
+          </div>
+
+          <div class="result-actions">
+            <button class="btn btn-secondary" onclick="switchTab('explainabilityTab')">
+              <i class="fa-solid fa-chart-waterfall"></i> View SHAP Breakdown
+            </button>
+            <button class="btn btn-accent" onclick="switchTab('counterfactualTab')">
+              <i class="fa-solid fa-wand-magic-sparkles"></i> Simulate "What-If" Interventions
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- TAB 2: SHAP EXPLAINABILITY HUB -->
+    <section id="explainabilityTab" class="tab-content">
+      <div class="card card-full">
+        <div class="card-header">
+          <div>
+            <h3><i class="fa-solid fa-chart-waterfall"></i> SHAP Feature Contribution Waterfall</h3>
+            <p class="subtitle">Decomposing the child's prediction into feature-level Shapley value risk contributions.</p>
+          </div>
+          <span class="badge badge-info">Game Theory Interpretability</span>
+        </div>
+
+        <div class="explainability-grid">
+          <!-- SHAP Chart -->
+          <div class="chart-container">
+            <canvas id="shapWaterfallChart"></canvas>
+          </div>
+
+          <!-- SHAP Narrative & Breakdown -->
+          <div class="shap-breakdown-panel">
+            <div class="factor-card risk-card">
+              <h4><i class="fa-solid fa-triangle-exclamation"></i> Primary Risk Accelerators</h4>
+              <ul id="shapRiskList" class="factor-list">
+                <li class="empty-msg">Run prediction first to view risk factors.</li>
+              </ul>
+            </div>
+
+            <div class="factor-card shield-card">
+              <h4><i class="fa-solid fa-shield-heart"></i> Protective Buffers</h4>
+              <ul id="shapProtectiveList" class="factor-list">
+                <li class="empty-msg">Run prediction first to view protective factors.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 3: DICE "WHAT-IF" COUNTERFACTUAL SIMULATOR -->
+    <section id="counterfactualTab" class="tab-content">
+      <div class="card card-full">
+        <div class="card-header">
+          <div>
+            <h3><i class="fa-solid fa-wand-magic-sparkles"></i> DiCE Counterfactual "What-If" Intervention Planner</h3>
+            <p class="subtitle">Simulate minimal realistic interventions to reduce this child's stunting risk.</p>
+          </div>
+          <span class="badge badge-accent">Actionable Policy Packages</span>
+        </div>
+
+        <div class="counterfactual-container">
+          <!-- Comparison Banner -->
+          <div class="sim-banner">
+            <div class="sim-box baseline-box">
+              <span class="sim-label">Baseline Current Risk</span>
+              <span id="simBaselineRisk" class="sim-val">--%</span>
+            </div>
+            <div class="sim-arrow">
+              <i class="fa-solid fa-arrow-right-long"></i>
+            </div>
+            <div class="sim-box target-box">
+              <span class="sim-label">Simulated Post-Intervention Risk</span>
+              <span id="simTargetRisk" class="sim-val highlight">--%</span>
+            </div>
+            <div class="sim-box delta-box">
+              <span class="sim-label">Total Risk Reduction</span>
+              <span id="simDeltaRisk" class="sim-val badge-success">-0.0%</span>
+            </div>
+          </div>
+
+          <!-- Packages Grid -->
+          <div id="interventionPackagesGrid" class="packages-grid">
+            <div class="package-card empty-card">
+              <p>Run a child screening prediction to generate custom DiCE intervention packages.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 4: MODEL TRUST & BENCHMARKS -->
+    <section id="benchmarkTab" class="tab-content">
+      <div class="card card-full">
+        <div class="card-header">
+          <div>
+            <h3><i class="fa-solid fa-shield-halved"></i> Empirical Model Benchmark Ladder & Rigor</h3>
+            <p class="subtitle">5-Fold Stratified Cross Validation with SMOTE inside each fold on exact same split protocol.</p>
+          </div>
+          <div style="display: flex; gap: 10px; align-items: center;">
+            <span class="badge badge-success">Auditable ML Protocol</span>
+            <button class="btn btn-secondary btn-sm" style="padding: 6px 12px; font-size: 0.8rem;" onclick="runBenchmarkRetest()" id="btnRetestBenchmark">
+              <i class="fa-solid fa-rotate-right"></i> Run Retest
+            </button>
+          </div>
+        </div>
+
+        <div class="benchmark-grid">
+          <div class="table-responsive">
+            <table class="benchmark-table">
+              <thead>
+                <tr>
+                  <th>Algorithm</th>
+                  <th>CV ROC-AUC</th>
+                  <th>Test ROC-AUC</th>
+                  <th>Test Recall (Stunted)</th>
+                  <th>Precision</th>
+                  <th>F1 Score</th>
+                  <th>Accuracy</th>
+                  <th>Brier Score</th>
+                </tr>
+              </thead>
+              <tbody id="benchmarkTableBody">
+                <tr><td colspan="8" class="text-center">Loading benchmark results...</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Global SHAP Importance Chart -->
+          <div class="global-shap-box">
+            <h4><i class="fa-solid fa-chart-bar"></i> Population-Level SHAP Feature Importance (Tamil Nadu)</h4>
+            <div class="chart-container small-chart">
+              <canvas id="globalShapChart"></canvas>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 5: ASHA FIELD WORKER QUICK-SCREEN MODE -->
+    <section id="fieldTab" class="tab-content">
+      <div class="field-container">
+        <div class="field-header">
+          <i class="fa-solid fa-user-nurse"></i>
+          <div>
+            <h2>ASHA / ANM Village Health Screening Mode</h2>
+            <p>Rapid 6-question field screening tool for community health workers.</p>
+          </div>
+        </div>
+
+        <div class="field-card">
+          <form id="fieldForm" onsubmit="event.preventDefault(); runFieldPrediction();">
+            <div class="field-question">
+              <label>1. Child Age in Months:</label>
+              <input type="number" id="field_age" value="18" min="0" max="59">
+            </div>
+
+            <div class="field-question">
+              <label>2. Number of Antenatal Checkups (ANC) during pregnancy:</label>
+              <div class="field-options">
+                <button type="button" class="field-opt-btn" onclick="setFieldVal('field_anc', 0)">0-1 Checkup</button>
+                <button type="button" class="field-opt-btn active" onclick="setFieldVal('field_anc', 3)">2-3 Checkups</button>
+                <button type="button" class="field-opt-btn" onclick="setFieldVal('field_anc', 6)">4+ Checkups (Recommended)</button>
+              </div>
+              <input type="hidden" id="field_anc" value="3">
+            </div>
+
+            <div class="field-question">
+              <label>3. Household Toilet Facility:</label>
+              <div class="field-options">
+                <button type="button" class="field-opt-btn active" onclick="setFieldVal('field_toilet', 'toilet_type_31')">No Toilet (Open Defecation)</button>
+                <button type="button" class="field-opt-btn" onclick="setFieldVal('field_toilet', 'toilet_type_22')">Pit Latrine</button>
+                <button type="button" class="field-opt-btn" onclick="setFieldVal('field_toilet', 'toilet_type_11')">Private Flush Toilet</button>
+              </div>
+              <input type="hidden" id="field_toilet" value="toilet_type_31">
+            </div>
+
+            <div class="field-question">
+              <label>4. Drinking Water Source:</label>
+              <div class="field-options">
+                <button type="button" class="field-opt-btn active" onclick="setFieldVal('field_water', 'water_source_31')">Unprotected Well / Surface</button>
+                <button type="button" class="field-opt-btn" onclick="setFieldVal('field_water', 'water_source_13')">Public Tap</button>
+                <button type="button" class="field-opt-btn" onclick="setFieldVal('field_water', 'water_source_11')">Piped Dwelling Tap</button>
+              </div>
+              <input type="hidden" id="field_water" value="water_source_31">
+            </div>
+
+            <div class="field-question">
+              <label>5. Has the child had diarrhea in the last 2 weeks?</label>
+              <div class="field-options">
+                <button type="button" class="field-opt-btn" onclick="setFieldVal('field_diarrhea', 0)">No</button>
+                <button type="button" class="field-opt-btn active" onclick="setFieldVal('field_diarrhea', 1)">Yes (Recent Diarrhea)</button>
+              </div>
+              <input type="hidden" id="field_diarrhea" value="1">
+            </div>
+
+            <button type="submit" class="btn btn-field-submit btn-block">
+              <i class="fa-solid fa-bolt"></i> Run Rapid Field Risk Check
+            </button>
+          </form>
+
+          <div id="fieldResultBox" class="field-result-card hidden">
+            <h3 id="fieldRiskHeader">Risk Assessment Result</h3>
+            <div id="fieldRiskScore" class="field-score-text">0.0%</div>
+            <p id="fieldAdviceText">Advice guidance...</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="footer"></footer>
+
+  <!-- App Script -->
+  <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>

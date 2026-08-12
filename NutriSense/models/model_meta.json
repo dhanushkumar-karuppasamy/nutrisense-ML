@@ -1,0 +1,14 @@
+{
+  "winner_model": "Random Forest",
+  "cv_roc_auc": 0.5871,
+  "test_roc_auc": 0.5972,
+  "calibrated_test_auc": 0.5972,
+  "test_recall": 0.0594,
+  "test_precision": 0.3273,
+  "test_f1": 0.1006,
+  "test_accuracy": 0.7267,
+  "brier_score": 0.1904,
+  "sample_size": 5890,
+  "feature_count": 56,
+  "stunting_prevalence_pct": 25.76
+}

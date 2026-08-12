@@ -1,0 +1,14 @@
+{
+  "winner": "Stacking (RF+GBM)",
+  "best_cv_auc": 0.6023,
+  "test_auc": 0.5818,
+  "best_params": {
+    "clf__rf__n_estimators": "100",
+    "clf__gbm__n_estimators": "100",
+    "clf__gbm__learning_rate": "0.08"
+  },
+  "scale_pos_weight": 2.88,
+  "feature_count": 41,
+  "train_size": 4712,
+  "test_size": 1178
+}
